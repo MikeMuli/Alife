@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wordle-style Game</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #f4f4f9;
+            margin: 0;
+        }
+        .container {
+            text-align: center;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            max-width: 400px;
+            width: 100%;
+        }
+        h1 {
+            color: #333;
+        }
+        .word-row {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 10px;
+        }
+        .word-row input {
+            width: 50px;
+            height: 50px;
+            font-size: 2em;
+            text-align: center;
+            margin: 0 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .word-row input.correct {
+            background-color: #8bc34a;
+            color: #fff;
+            border-color: #8bc34a;
+        }
+        .word-row input.present {
+            background-color: #ffeb3b;
+            color: #000;
+            border-color: #ffeb3b;
+        }
+        .word-row input.absent {
+            background-color: #ccc;
+            color: #fff;
+            border-color: #ccc;
+        }
+        .hint {
+            font-style: italic;
+            color: #666;
+            margin-top: 5px;
+        }
+        .keyboard {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            grid-gap: 5px;
+            margin-top: 20px;
+        }
+        .keyboard-key {
+            background-color: #ccc;
+            border: none;
+            padding: 10px;
+            font-size: 1em;
+            cursor: pointer;
+        }
+        .keyboard-key.correct {
+            background-color: #8bc34a;
+            color: #fff;
+        }
+        .keyboard-key.present {
+            background-color: #ffeb3b;
+            color: #000;
+        }
+        .keyboard-key.absent {
+            background-color: #ccc;
+            color: #fff;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Wordle-style Game</h1>
+        <p>Guess the 5-letter word!</p>
+        <div class="word-rows" id="word-rows"></div>
+        <div class="hints" id="hints"></div>
+        <div class="keyboard" id="keyboard"></div>
+        <p id="message"></p>
+    </div>
+
+    <script>
+        const targetWord = "HEIRS";
+const hints = [
+    "A successor to a title, estate, or position, often determined by lineage.",
+    "A person entitled to inherit property or a title, typically by law or family tradition.",
+    "An individual designated to receive an inheritance, often associated with nobility or wealth.",
+    "A term used to describe someone who is next in line to assume a role or position of authority.",
+    "A person who is legally or naturally designated to succeed another in the possession of property or title."
+];
+        let attempts = 5;
+        const wordRows = document.getElementById('word-rows');
+        const hintsContainer = document.getElementById('hints');
+        const keyboard = document.getElementById('keyboard');
+        const messageElement = document.getElementById('message');
+
+        // Initialize hints
+        hints.forEach(hint => {
+            const hintDiv = document.createElement('div');
+            hintDiv.classList.add('hint');
+            hintDiv.textContent = hint;
+            hintsContainer.appendChild(hintDiv);
+        });
+
+        // Create keyboard
+        const letters = "QWERTYUIOPASDFGHJKLZXCVBNM";
+        letters.split('').forEach(letter => {
+            const key = document.createElement('button');
+            key.classList.add('keyboard-key');
+            key.textContent = letter;
+            key.addEventListener('click', () => handleKeyClick(letter));
+            keyboard.appendChild(key);
+        });
+        const enterKey = document.createElement('button');
+        enterKey.classList.add('keyboard-key');
+        enterKey.textContent = 'ENTER';
+        enterKey.addEventListener('click', submitGuess);
+        keyboard.appendChild(enterKey);
+        const delKey = document.createElement('button');
+        delKey.classList.add('keyboard-key');
+        delKey.textContent = 'DEL';
+        delKey.addEventListener('click', deleteLetter);
+        keyboard.appendChild(delKey);
+
+        function createWordRow() {
+            const wordRow = document.createElement('div');
+            wordRow.classList.add('word-row');
+            for (let i = 0; i < 5; i++) {
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.maxLength = 1;
+                input.classList.add('letter-input');
+                wordRow.appendChild(input);
+            }
+            wordRows.appendChild(wordRow);
+            return wordRow;
+        }
+
+        function handleKeyClick(letter) {
+            const currentRow = document.querySelector('.word-row:last-child');
+            const inputs = currentRow.querySelectorAll('input');
+            for (let input of inputs) {
+                if (input.value === '') {
+                    input.value = letter;
+                    return;
+                }
+            }
+        }
+
+        function deleteLetter() {
+            const currentRow = document.querySelector('.word-row:last-child');
+            const inputs = currentRow.querySelectorAll('input');
+            for (let i = inputs.length - 1; i >= 0; i--) {
+                if (inputs[i].value !== '') {
+                    inputs[i].value = '';
+                    return;
+                }
+            }
+        }
+
+        function submitGuess() {
+            const currentRow = document.querySelector('.word-row:last-child');
+            const inputs = currentRow.querySelectorAll('input');
+            const guess = Array.from(inputs).map(input => input.value.toUpperCase()).join('');
+
+            if (guess.length !== 5) {
+                alert('Please fill in all 5 letters!');
+                return;
+            }
+
+            attempts--;
+            let resultHTML = '';
+
+            // Check each letter
+            for (let i = 0; i < guess.length; i++) {
+                if (guess[i] === targetWord[i]) {
+                    resultHTML += `<span class="result correct">${guess[i]}</span>`;
+                    inputs[i].classList.add('correct');
+                    updateKeyboardKey(guess[i], 'correct');
+                } else if (targetWord.includes(guess[i])) {
+                    resultHTML += `<span class="result present">${guess[i]}</span>`;
+                    inputs[i].classList.add('present');
+                    updateKeyboardKey(guess[i], 'present');
+                } else {
+                    resultHTML += `<span class="result absent">${guess[i]}</span>`;
+                    inputs[i].classList.add('absent');
+                    updateKeyboardKey(guess[i], 'absent');
+                }
+            }
+
+            // Create a new row for the next guess
+            createWordRow();
+
+            // Check for win or loss
+            if (guess === targetWord) {
+                messageElement.textContent = 'Congratulations! You guessed the word!';
+                disableKeyboard();
+            } else if (attempts === 0) {
+                messageElement.textContent = `Game over! The word was "${targetWord}".`;
+                disableKeyboard();
+            }
+
+            // Clear the last input row for next guess
+            currentRow.querySelectorAll('input').forEach(input => input.value = '');
+        }
+
+        function updateKeyboardKey(letter, status) {
+            const key = document.querySelector(`.keyboard-key[textContent="${letter}"]`);
+            if (key) {
+                key.classList.add(status);
+            }
+        }
+
+        function disableKeyboard() {
+            const keys = document.querySelectorAll('.keyboard-key');
+            keys.forEach(key => {
+                key.disabled = true; // Disable all keys
+            });
+        }
+
+        // Start the game by creating the first row
+        createWordRow();
+    </script>
+</body>
+</html>
